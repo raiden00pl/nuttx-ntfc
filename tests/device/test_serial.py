@@ -93,6 +93,32 @@ def test_device_sim_internals(serial_config, serial_pair):
     assert ser._write(b"a") is None
 
 
+def test_device_serial_line_buffered_write(serial_config):
+    ser = DeviceSerial(serial_config)
+    sent = []
+
+    class FakeSerial:
+        def write(self, data):
+            sent.append(data)
+
+        def read(self, size):
+            return b""
+
+    ser._ser = FakeSerial()
+
+    assert ser._write(b"abc") is None
+    assert sent == [b"a", b"b", b"c", b"\n"]
+
+    sent.clear()
+    serial_config._config["line_buffered"] = True
+    assert ser._write(b"abc") is None
+    assert sent == [b"abc\n"]
+
+    sent.clear()
+    assert ser._write(b"abc\n") is None
+    assert sent == [b"abc\n"]
+
+
 def test_device_sim_init(serial_config, serial_pair):
 
     ser = DeviceSerial(serial_config)

@@ -47,6 +47,7 @@ def test_device_sim_start_opens_host():
         config.os = "nuttx"
         config.read_poll_interval = 0.1
         config.elf_path = "/tmp/nuttx-sim"
+        config.line_buffered = False
         config.uptime = 3
         sim = DeviceSim(config)
 
@@ -64,12 +65,31 @@ def test_device_sim_start_opens_host():
         assert called["uptime"] == 3
 
 
+def test_device_sim_line_buffered_start_disables_send_delay():
+    with patch("ntfc.coreconfig.CoreConfig") as mockdevice:
+        config = mockdevice.return_value
+        config.elf_path = "/tmp/nuttx-sim"
+        config.line_buffered = True
+        config.uptime = 0
+        sim = DeviceSim(config)
+
+        class FakeChild:
+            delaybeforesend = 0.05
+
+        child = FakeChild()
+        sim.host_open = lambda *_args: child
+
+        sim.start()
+        assert child.delaybeforesend == 0
+
+
 def test_device_sim_write_adds_newline():
     with patch("ntfc.coreconfig.CoreConfig") as mockdevice:
         config = mockdevice.return_value
         config.os = "nuttx"
         config.read_poll_interval = 0.1
         config.elf_path = "/tmp/nuttx-sim"
+        config.line_buffered = False
         sim = DeviceSim(config)
 
         sent = []
@@ -94,6 +114,7 @@ def test_device_sim_write_no_extra_newline():
         config.os = "nuttx"
         config.read_poll_interval = 0.1
         config.elf_path = "/tmp/nuttx-sim"
+        config.line_buffered = False
         sim = DeviceSim(config)
 
         sent = []
@@ -109,3 +130,29 @@ def test_device_sim_write_no_extra_newline():
 
         sim._write(b"abc\n")
         assert sent == [b"a", b"b", b"c", b"\n"]
+
+
+def test_device_sim_line_buffered_write():
+    with patch("ntfc.coreconfig.CoreConfig") as mockdevice:
+        config = mockdevice.return_value
+        config.elf_path = "/tmp/nuttx-sim"
+        config.line_buffered = True
+        sim = DeviceSim(config)
+
+        sent = []
+
+        class FakeChild:
+            def isalive(self):
+                return True
+
+            def send(self, data):
+                sent.append(data)
+
+        sim._child = FakeChild()
+
+        sim._write(b"abc")
+        assert sent == [b"abc\n\n"]
+
+        sent.clear()
+        sim._write(b"abc\n")
+        assert sent == [b"abc\n"]

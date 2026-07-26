@@ -193,6 +193,11 @@ class CoreConfig:
             return os.path.join(os.path.dirname(self.elf_path), "bin")
         return None
 
+    @property
+    def line_buffered(self) -> bool:
+        """Return whether commands are sent in one transport write."""
+        return bool(self._config.get("line_buffered", False))
+
     def kv_check(self, cfg: str) -> Any:
         """Check Kconfig option and return its value.
 

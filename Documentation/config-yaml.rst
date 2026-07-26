@@ -118,6 +118,30 @@ checks.
          flash_only: true
          # core1 is built/flashed only
 
+Line-buffered command writes
+============================
+
+By default, NTFC sends a command one byte at a time. This is the safest mode
+for serial targets without flow control and remains the default.
+
+Set ``line_buffered: true`` for a core to write a complete command in one
+transport operation instead. This reduces host-side overhead for ``sim`` and
+can also be enabled for serial targets with reliable flow control.
+
+.. code-block:: yaml
+
+   product:
+     name: "product-name"
+     cores:
+       core0:
+         name: "main"
+         device: "sim"
+         line_buffered: true
+
+For the simulator, line-buffered mode also disables the pexpect per-send
+delay. Do not enable this option for serial targets that cannot
+reliably accept a full command at once.
+
 **SMP (Symmetric Multi-Processing)**
 
 In SMP mode, all cores share the same device instance, coordinated by

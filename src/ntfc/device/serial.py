@@ -101,13 +101,19 @@ class DeviceSerial(DeviceCommon):
 
         assert self._ser
 
-        # send char by char to avoid line length full
-        for c in data:
-            self._ser.write(bytes([c]))
+        if self._conf.line_buffered:
+            if data[-1] != ord("\n"):
+                data += b"\n"
 
-        # add new line if missing
-        if data[-1] != ord("\n"):
-            self._ser.write(b"\n")  # pragma: no cover
+            self._ser.write(data)
+        else:
+            # send char by char to avoid line length full
+            for c in data:
+                self._ser.write(bytes([c]))
+
+            # add new line if missing
+            if data[-1] != ord("\n"):
+                self._ser.write(b"\n")  # pragma: no cover
 
         # read all garbage left by character echo
         _ = self._read_all(timeout=0)

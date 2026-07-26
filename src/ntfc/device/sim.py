@@ -49,7 +49,9 @@ class DeviceSim(DeviceHost):
         uptime = self._conf.uptime
 
         # open host-based emulation
-        self.host_open(cmd, uptime)
+        child = self.host_open(cmd, uptime)
+        if self._conf.line_buffered:
+            child.delaybeforesend = 0
 
     @property
     def name(self) -> str:
@@ -62,6 +64,14 @@ class DeviceSim(DeviceHost):
             return
 
         assert self._child
+
+        if self._conf.line_buffered:
+            if data[-1] != ord("\n"):
+                # Sometimes sim misses a single trailing newline.
+                data += b"\n\n"
+
+            self._child.send(data)
+            return
 
         # send char by char to avoid line length full
         for c in data:
