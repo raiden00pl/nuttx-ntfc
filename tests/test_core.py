@@ -627,3 +627,81 @@ def test_core_check_cmd_kernel_mode(tmp_path):
         assert p.check_cmd("hello_main") is True
         assert p.check_cmd("nonexistent") is False
         mockdevice.return_value.send_cmd_read_until_pattern.assert_not_called()
+
+
+def test_core_check_cmd_kernel_runtime_fallback(tmp_path, monkeypatch):
+    """Test check_cmd discovers commands from the running target."""
+    from ntfc.coreconfig import CoreConfig
+
+    kernel_cfg = tmp_path / "kv_config"
+    kernel_cfg.write_text(
+        'CONFIG_BUILD_KERNEL=y\nCONFIG_PATH_INITIAL="/system/bin"\n'
+    )
+    # a kernel core whose application binaries are not on the host:
+    # the command set has to come from the running target
+    conf = CoreConfig(
+        {
+            "name": "t",
+            "conf_path": str(kernel_cfg),
+            "elf_path": "./tests/resources/nuttx/sim/nuttx",
+        }
+    )
+    assert conf.has_app_bindir is False
+
+    with patch("ntfc.device.common.DeviceCommon") as mockdevice:
+        p = ProductCore(mockdevice.return_value, conf)
+
+        calls = []
+        status = [CmdStatus.TIMEOUT]
+
+        def fake_send(cmd, pattern=None, args=None, timeout=30):
+            calls.append(cmd)
+            output = "ls /system/bin\n/system/bin:\n hello\n init\n sh\nnsh> "
+            return CmdReturn(status[0], output=output)
+
+        monkeypatch.setattr(p, "sendCommandReadUntilPattern", fake_send)
+
+        # listing failure is not cached
+        assert p.check_cmd("hello") is False
+        assert len(calls) == 1
+
+        status[0] = CmdStatus.SUCCESS
+        assert p.check_cmd("hello") is True
+        assert p.check_cmd("hello_main") is True
+        assert p.check_cmd("missing|sh") is True
+        assert p.check_cmd("missing") is False
+
+        # target was listed once after the failed attempt
+        assert calls == ["ls /system/bin", "ls /system/bin"]
+
+
+def test_core_check_cmd_kernel_runtime_does_not_cache_ls_error(
+    tmp_path, monkeypatch
+):
+    """Do not interpret words from an ls error as target commands."""
+    from ntfc.coreconfig import CoreConfig
+
+    kernel_cfg = tmp_path / "kv_config"
+    kernel_cfg.write_text("CONFIG_BUILD_KERNEL=y\n")
+    conf = CoreConfig({"name": "t", "conf_path": str(kernel_cfg)})
+
+    with patch("ntfc.device.common.DeviceCommon") as mockdevice:
+        p = ProductCore(mockdevice.return_value, conf)
+        calls = []
+
+        def fake_send(cmd, pattern=None, args=None, timeout=30):
+            calls.append(cmd)
+            return CmdReturn(
+                CmdStatus.SUCCESS,
+                output=(
+                    "ls /system/bin\n"
+                    "ls: /system/bin: No such file or directory\n"
+                    "nsh> "
+                ),
+            )
+
+        monkeypatch.setattr(p, "sendCommandReadUntilPattern", fake_send)
+
+        assert p.check_cmd("No") is False
+        assert p.check_cmd("file") is False
+        assert calls == ["ls /system/bin", "ls /system/bin"]

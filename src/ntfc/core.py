@@ -28,7 +28,6 @@ from typing import (
     Any,
     List,
     Optional,
-    Pattern,
     Tuple,
     Union,
 )
@@ -36,6 +35,7 @@ from typing import (
 from ntfc.command_builder import CommandBuilder
 from ntfc.coreconfig import CoreConfig
 from ntfc.device.common import CmdReturn, CmdStatus
+from ntfc.lib.elf.app_bindir import match_command, symbol_patterns
 from ntfc.log.logger import logger
 
 if TYPE_CHECKING:
@@ -73,6 +73,8 @@ class CoreStatus(_Enum):
 class ProductCore:
     """This class implements product core under test."""
 
+    _PATH_NAME_RE = re.compile(r"[A-Za-z0-9_.+-]+")
+
     def __init__(
         self,
         device: "DeviceCommon",
@@ -100,6 +102,7 @@ class ProductCore:
             list(ignored_cores) if ignored_cores is not None else ["dsp"]
         )
         self._builder = CommandBuilder(device.prompt, device.no_cmd)
+        self._runtime_cmds: Optional[List[str]] = None
 
         self._prompt = device.prompt
         self._main_prompt = self._prompt
@@ -528,17 +531,47 @@ class ProductCore:
         """Start device."""
         self._device.start()
 
+    def _check_cmd_runtime(self, cmd_pattern: str) -> bool:
+        """Check a command against the target PATH listing.
+
+        The listing is fetched once from the running target and cached;
+        a failed listing is not cached so it is retried on next use.
+        """
+        if self._runtime_cmds is None:
+            result = self.sendCommandReadUntilPattern(
+                f"ls {self._conf.path_initial}", timeout=5
+            )
+            if result.status != CmdStatus.SUCCESS:
+                return False
+
+            output_lower = result.output.lower()
+            no_cmd = str(self._device.no_cmd).lower()
+            if no_cmd in output_lower or any(
+                line.lstrip().lower().startswith("ls:")
+                for line in result.output.splitlines()
+            ):
+                return False
+
+            # drop the command echo line; path headers and the prompt
+            # do not match the name pattern
+            tokens = " ".join(result.output.splitlines()[1:]).split()
+            self._runtime_cmds = [
+                token
+                for token in tokens
+                if self._PATH_NAME_RE.fullmatch(token)
+            ]
+
+        return match_command(cmd_pattern, self._runtime_cmds)
+
     def check_cmd(self, cmd_pattern: str) -> bool:
         """Check if a command pattern is available on the core.
 
-        Commands are resolved from the core configuration when it knows
-        the application binaries, from the device ELF parser or the
-        shell help output otherwise. It supports both single commands
-        and alternative command patterns separated by '|'.
+        Commands are resolved from the application binaries, the running
+        target, the device ELF parser or the shell help output, in that
+        order.
 
-        :param cmd_pattern: Command pattern to check for. Can contain
-                           alternatives separated by '|'
-                           (e.g., 'test1|test2')
+        :param cmd_pattern: Command pattern, may contain alternatives
+                            separated by '|' (e.g. 'test1|test2')
         :return: True if the command pattern is found, False otherwise
         """
         # Kernel-mode: resolve against the application binary directory
@@ -546,24 +579,17 @@ class ProductCore:
         if self._conf.has_app_bindir:
             return self._conf.cmd_check(cmd_pattern)
 
+        if self._conf.is_kernel_build:
+            # prebuilt image without host binaries: discover the
+            # command set once from the running target
+            return self._check_cmd_runtime(cmd_pattern)
+
         # Devices that expose their own ELF parser resolve the command
         # from its symbols
         if hasattr(self._device, "elf_parser") and self._device.elf_parser:
             logger.debug(f"Checking command pattern: {cmd_pattern}")
 
-            for pattern in cmd_pattern.split("|"):
-                # For cmocka tests, append _main to symbol name
-                symbol_str = (
-                    f"{pattern}_main" if "cmocka" in pattern else pattern
-                )
-
-                # Support regex wildcards
-                symbol: Union[str, Pattern[str]] = (
-                    re.compile(symbol_str)
-                    if ".*" in symbol_str
-                    else symbol_str
-                )
-
+            for symbol in symbol_patterns(cmd_pattern):
                 if self._device.elf_parser.has_symbol(symbol):
                     return True
 
