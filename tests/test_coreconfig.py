@@ -18,6 +18,8 @@
 #
 ############################################################################
 
+import shutil
+
 import pytest
 
 from ntfc.coreconfig import CoreConfig
@@ -163,6 +165,48 @@ def test_core_config_app_bindir(tmp_path):
         "elf_path": "./tests/resources/nuttx/sim/nuttx",
     }
     assert CoreConfig(conf).app_bindir is None
+
+    # a derived directory that does not exist is not a command source
+    conf = {
+        "name": "t",
+        "conf_path": str(kernel_cfg),
+        "elf_path": "./tests/resources/nuttx/sim/nuttx",
+    }
+    core_conf = CoreConfig(conf)
+    assert core_conf.app_bindir == "./tests/resources/nuttx/sim/bin"
+    assert core_conf.has_app_bindir is False
+
+
+def test_core_config_cmd_check_kernel_mode(tmp_path):
+    kernel_cfg = tmp_path / "kv_config"
+    kernel_cfg.write_text("CONFIG_BUILD_KERNEL=y\n")
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    (bindir / "hello").write_bytes(b"\x7fELF" + b"\x00" * 12)
+
+    conf = {
+        "name": "t",
+        "conf_path": str(kernel_cfg),
+        "app_bindir": str(bindir),
+    }
+
+    p = CoreConfig(conf)
+    assert p.has_app_bindir is True
+    # command resolution by application file name, no ELF configured
+    assert p.cmd_check("hello") is True
+    assert p.cmd_check("hello_main") is True
+    assert p.cmd_check("cmd_df") is False
+
+    # symbol fallback over unstripped binaries in bin_debug
+    debug = tmp_path / "bin_debug"
+    debug.mkdir()
+    shutil.copy("./tests/resources/nuttx/sim/nuttx", debug / "sh")
+
+    p = CoreConfig(conf)
+    assert p.cmd_check("cmd_df") is True
+    assert p.cmd_check("missing|cmd_df") is True
+    assert p.cmd_check("cmd_d.*") is True
+    assert p.cmd_check("no_such_symbol_xyz") is False
 
 
 def test_core_config_read_poll_interval() -> None:

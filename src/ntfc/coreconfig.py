@@ -21,8 +21,10 @@
 """Product core configuration handler."""
 
 import os
+from functools import cached_property
 from typing import Any, Dict, Optional, Union
 
+from ntfc.lib.elf.app_bindir import AppBinDir, symbol_patterns
 from ntfc.lib.elf.elf_parser import ElfParser
 
 
@@ -211,10 +213,36 @@ class CoreConfig:
 
         return self._kv_values.get(cfg, False)
 
+    @cached_property
+    def _appbin(self) -> Optional[AppBinDir]:
+        """Return the installed kernel-mode application binaries."""
+        bindir = self.app_bindir
+        if not bindir or not os.path.isdir(bindir):
+            return None
+
+        return AppBinDir(bindir)
+
+    @property
+    def has_app_bindir(self) -> bool:
+        """Return True when kernel-mode application binaries are found."""
+        return self._appbin is not None
+
     def cmd_check(self, cmd: str, core: int = 0) -> bool:
-        """Check if command is available in binary."""
+        """Check if command is available in binary.
+
+        Kernel-mode cores resolve commands against the application binary
+        directory; otherwise the symbol must exist in the core ELF.
+        """
+        if self._appbin:
+            if self._appbin.has_command(cmd):
+                return True
+            # not an application: NSH builtins and test entry points
+            # are symbols inside the application binaries
+            return self._appbin.has_symbol(cmd)
+
         if not self._elf:
             raise AttributeError("no elf data")
 
-        symbol_name = f"{cmd}_main" if "cmocka" in cmd else cmd
-        return self._elf.has_symbol(symbol_name)
+        return any(
+            self._elf.has_symbol(symbol) for symbol in symbol_patterns(cmd)
+        )
