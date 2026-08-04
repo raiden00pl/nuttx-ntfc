@@ -24,6 +24,7 @@ import os
 import re
 import shutil
 import subprocess
+from functools import partial
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -351,7 +352,6 @@ class NuttXBuilder:
             "--build",
             str(build_path),
         ]
-
         run_env = os.environ.copy()
         if env:
             run_env.update(env)  # pragma: no cover
@@ -431,8 +431,8 @@ class NuttXBuilder:
             if not already_build or self._rebuild:  # pragma: no cover
                 self._log_kconfig_overrides(kv_overrides)
 
-                # configure build
-                self._run_cmake(
+                configure = partial(
+                    self._run_cmake,
                     source=nuttx_dir,
                     build=build_path,
                     generator="Ninja",
@@ -440,19 +440,27 @@ class NuttXBuilder:
                     env=build_env,
                 )
 
+                # configure build
+                configure()
+
                 # apply Kconfig overrides to generated .config before build
                 self._apply_kconfig_overrides(
                     nuttx_conf_path, kv_overrides, cfg_cwd
                 )
 
-                # Regenerate include/nuttx/config.h after changing .config.
-                # Otherwise CMake can relink an image built with stale Kconfig
-                # values while the saved .config claims the override applied.
-
                 if kv_overrides:
+                    # fill in defaults of suboptions the overrides
+                    # unlocked (e.g. *_PROGNAME): applications are
+                    # silently dropped at configure when these are
+                    # missing from .config
                     self._run_build_target(
                         build_path, "olddefconfig", env=build_env
                     )
+
+                    # application targets are registered at configure
+                    # time from .config: configure again so overrides
+                    # that enable new applications take effect
+                    configure()
 
                 # build
                 self._run_build(build_path, env=build_env)
