@@ -44,12 +44,9 @@ class DeviceQemu(DeviceHost):
 
     def _start_impl(self) -> None:
         """Start QEMU emulator implementation."""
-        elf = self._conf.elf_path
+        elf = self._image_path()
         exec_path = self._conf.exec_path
         exec_args = self._conf.exec_args
-
-        if not elf:
-            raise IOError
         if not exec_path:
             raise KeyError("no exec_path in configuration file!")
 
