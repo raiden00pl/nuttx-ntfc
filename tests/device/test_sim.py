@@ -138,3 +138,33 @@ def test_device_sim_line_buffered_write():
         sent.clear()
         sim._write(b"abc\n")
         assert sent == [b"abc\n"]
+
+
+def test_device_sim_exec_cwd_absolute_image(tmp_path):
+
+    import os
+
+    from ntfc.coreconfig import CoreConfig
+
+    config = CoreConfig(
+        {"name": "t", "device": "sim", "exec_cwd": str(tmp_path)}
+    )
+    # relative image path, resolved against the NTFC cwd at spawn time
+    config._config["elf_path"] = "some/image"
+
+    sim = DeviceSim(config)
+    cmds = []
+    sim.host_open = lambda cmd, uptime: cmds.append(cmd)
+    sim.start()
+
+    assert cmds[0] == [os.path.abspath("some/image")]
+
+    # without exec_cwd the image path is passed through unchanged
+    config = CoreConfig({"name": "t", "device": "sim"})
+    config._config["elf_path"] = "some/image"
+
+    sim = DeviceSim(config)
+    sim.host_open = lambda cmd, uptime: cmds.append(cmd)
+    sim.start()
+
+    assert cmds[1] == ["some/image"]

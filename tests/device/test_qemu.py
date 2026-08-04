@@ -18,6 +18,7 @@
 #
 ############################################################################
 
+import os
 from unittest.mock import patch
 
 import pytest
@@ -89,6 +90,7 @@ def test_device_qemu_open():
         config.exec_path = ""
         config.exec_args = ""
         config.elf_path = ""
+        config.exec_cwd = None
 
         qemu = DeviceQemu(config)
 
@@ -175,3 +177,27 @@ def test_device_qemu_open():
         config.uptime = 3
 
         qemu.start()
+
+
+def test_device_qemu_exec_cwd_absolute_image(tmp_path):
+
+    from ntfc.coreconfig import CoreConfig
+
+    config = CoreConfig(
+        {
+            "name": "t",
+            "device": "qemu",
+            "exec_path": "qemu-system-riscv64",
+            "exec_args": "-nographic",
+            "exec_cwd": str(tmp_path),
+        }
+    )
+    # relative image path, resolved against the NTFC cwd at spawn time
+    config._config["elf_path"] = "some/image"
+
+    qemu = DeviceQemu(config)
+    cmds = []
+    qemu.host_open = lambda cmd, uptime: cmds.append(cmd)
+    qemu.start()
+
+    assert cmds[0][2] == "-kernel " + os.path.abspath("some/image")

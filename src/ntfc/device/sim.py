@@ -41,11 +41,7 @@ class DeviceSim(DeviceHost):
 
     def _start_impl(self) -> None:
         """Start sim emulator implementation."""
-        elf = self._conf.elf_path
-        if not elf:
-            raise IOError
-
-        cmd = [elf]
+        cmd = [self._image_path()]
         uptime = self._conf.uptime
 
         # open host-based emulation
