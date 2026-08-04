@@ -227,6 +227,11 @@ class CoreConfig:
         """Return True when kernel-mode application binaries are found."""
         return self._appbin is not None
 
+    @property
+    def path_initial(self) -> str:
+        """Return the initial target PATH, see CONFIG_PATH_INITIAL."""
+        return str(self.kv_check("CONFIG_PATH_INITIAL") or "/system/bin")
+
     def cmd_check(self, cmd: str, core: int = 0) -> bool:
         """Check if command is available in binary.
 
