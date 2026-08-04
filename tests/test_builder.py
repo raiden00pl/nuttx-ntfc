@@ -143,6 +143,35 @@ def test_builder_flat_mode_no_kernel_keys(tmp_path) -> None:
     )
 
 
+def test_builder_reconfigures_after_kv_overrides(monkeypatch) -> None:
+    config = copy.deepcopy(conf_dir)
+    config["product"]["cores"]["core0"]["defconfig"] = "dummy/path"
+    config["product"]["cores"]["core0"]["kv"] = {"CONFIG_SYSTEM_X": "y"}
+
+    calls = []
+
+    def run_command_capture(cmd, env):
+        calls.append(cmd)
+
+    b = NuttXBuilder(config)
+    b._run_command = run_command_capture
+    b._make_dir = builder_make_dir_dummy
+    monkeypatch.setattr(
+        b, "_apply_kconfig_overrides", lambda *args, **kwargs: None
+    )
+
+    b.build_all()
+
+    # application targets are registered at configure time: overrides
+    # require an olddefconfig (defaults of unlocked suboptions) and a
+    # second configure before the build
+    assert [cmd[0] for cmd in calls] == ["cmake"] * 4
+    assert calls[1][-1] == "olddefconfig"
+    assert calls[0][:2] == calls[2][:2]
+    assert calls[3][:2] == ["cmake", "--build"]
+    assert "olddefconfig" not in calls[3]
+
+
 def test_builder_expand_flash_cmd() -> None:
     b = NuttXBuilder(copy.deepcopy(conf_dir))
     core_cfg = {
@@ -283,7 +312,8 @@ def test_builder_regenerates_config_after_kconfig_overrides() -> None:
         "--target",
         "olddefconfig",
     ]
-    assert calls[2] == ["cmake", "--build", "bbb/product-xxx-dummy"]
+    assert calls[0][:2] == calls[2][:2]
+    assert calls[3] == ["cmake", "--build", "bbb/product-xxx-dummy"]
 
 
 def test_builder_run_build_target_passes_env() -> None:
@@ -655,11 +685,14 @@ def test_builder_applies_kv_before_build() -> None:
         def run_command_capture(cmd, env):
             calls.append(cmd)
             if "--build" not in cmd:
+                # cmake generates .config only when it does not exist yet
                 expected_build_path.mkdir(parents=True, exist_ok=True)
-                expected_conf_path.write_text(
-                    "# CONFIG_TEST_BOOL is not set\n" "CONFIG_TEST_STR=old\n",
-                    encoding="utf-8",
-                )
+                if not expected_conf_path.exists():
+                    expected_conf_path.write_text(
+                        "# CONFIG_TEST_BOOL is not set\n"
+                        "CONFIG_TEST_STR=old\n",
+                        encoding="utf-8",
+                    )
             else:
                 cfg_text = expected_conf_path.read_text(encoding="utf-8")
                 assert "CONFIG_TEST_BOOL=y\n" in cfg_text
@@ -679,11 +712,12 @@ def test_builder_applies_kv_before_build() -> None:
         with patch("ntfc.builder.logger.info", side_effect=logs.append):
             b.build_all()
 
-        assert len(calls) == 3
+        # configure, olddefconfig and reconfigure after overrides, build
+        assert len(calls) == 4
         assert calls[0][0] == "cmake"
-        assert calls[1][:2] == ["cmake", "--build"]
-        assert calls[1][-2:] == ["--target", "olddefconfig"]
-        assert calls[2][:2] == ["cmake", "--build"]
+        assert calls[1][-1] == "olddefconfig"
+        assert calls[2][0] == "cmake"
+        assert calls[3][:2] == ["cmake", "--build"]
         assert any(
             "Applying Kconfig overrides before build:" == msg for msg in logs
         )
