@@ -381,6 +381,10 @@ Flash command can use special tags that are handled by NTFC:
 - ``$IMAGE_BIN`` is replaced by path to ``nuttx.bin``.
 - ``$IMAGE_HEX`` is replaced by path to ``nuttx.hex``.
 - ``$IMAGE_ELF`` is replaced by path to the core image (``elf_path``).
+- ``$APPS_BINDIR`` is replaced by the application binaries directory
+  (kernel-mode builds).
+- ``$APPS_IMG`` is replaced by the generated application filesystem
+  image (requires ``apps_image``).
 
 Example usage with ``st-flash`` tool:
 
@@ -466,6 +470,11 @@ These fields are parsed by :class:`ntfc.coreconfig.CoreConfig`.
      - (Optional) Directory with kernel-mode application binaries. Defaults
        to the ``bin/`` directory next to the NuttX ELF for kernel-mode
        builds (``CONFIG_BUILD_KERNEL=y``)
+   * - ``apps_image``
+     - (Optional) Generate a filesystem image with the application
+       binaries after build, e.g. ``apps_image: {type: romfs}``. The
+       image path is available as ``$APPS_IMG`` in the ``flash``
+       command. Requires ``genromfs`` and a kernel-mode build
    * - ``defconfig``
      - Path to NuttX defconfig (auto-build)
    * - ``elf_path``
