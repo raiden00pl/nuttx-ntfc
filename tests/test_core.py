@@ -585,8 +585,6 @@ def test_core_check_cmd_with_elf_parser(envconfig_dummy):
         # Test regex wildcard pattern
         mock_elf_parser.has_symbol.side_effect = None
         mock_elf_parser.has_symbol.return_value = True
-        import re
-
         assert p.check_cmd("test.*") is True
         # The pattern should be compiled as regex
         call_args = mock_elf_parser.has_symbol.call_args
@@ -595,3 +593,37 @@ def test_core_check_cmd_with_elf_parser(envconfig_dummy):
         # Test all alternatives not found
         mock_elf_parser.has_symbol.return_value = False
         assert p.check_cmd("nonexistent1|nonexistent2") is False
+
+        # Test with failed help command
+        dev.send_cmd_read_until_pattern.return_value = CmdReturn(
+            CmdStatus.TIMEOUT
+        )
+        assert p.check_cmd("test") is False
+
+
+def test_core_check_cmd_kernel_mode(tmp_path):
+    """Test check_cmd resolves via app_bindir on kernel builds."""
+    from ntfc.coreconfig import CoreConfig
+
+    kernel_cfg = tmp_path / "kv_config"
+    kernel_cfg.write_text("CONFIG_BUILD_KERNEL=y\n")
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    (bindir / "hello").write_bytes(b"\x7fELF" + b"\x00" * 12)
+
+    conf = CoreConfig(
+        {
+            "name": "t",
+            "conf_path": str(kernel_cfg),
+            "app_bindir": str(bindir),
+        }
+    )
+
+    with patch("ntfc.device.common.DeviceCommon") as mockdevice:
+        p = ProductCore(mockdevice.return_value, conf)
+
+        # resolved from the application directory, device is not queried
+        assert p.check_cmd("hello") is True
+        assert p.check_cmd("hello_main") is True
+        assert p.check_cmd("nonexistent") is False
+        mockdevice.return_value.send_cmd_read_until_pattern.assert_not_called()
