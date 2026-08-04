@@ -192,7 +192,11 @@ Execute NSH command and verify output:
 
 Decorators:
 
-- ``@pytest.mark.cmd_check("symbol_name")``: Verify ELF symbol exists
+- ``@pytest.mark.cmd_check("symbol_name")``: Verify ELF symbol exists.
+  On kernel-mode targets (``CONFIG_BUILD_KERNEL=y``) the marker is first
+  matched against application file names (a trailing ``_main`` maps to
+  the file name, so ``hello_main`` matches the ``hello`` binary) and
+  then against symbols in the unstripped application binaries
 - ``@pytest.mark.dep_config("CONFIG_X", "CONFIG_Y")``: Skip if configs not
   enabled
 
