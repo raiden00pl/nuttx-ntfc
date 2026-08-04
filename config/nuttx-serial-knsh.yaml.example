@@ -1,0 +1,33 @@
+# Template for a kernel-mode (CONFIG_BUILD_KERNEL=y) hardware target
+# on a serial console. Copy, rename and fill in the board specifics.
+#
+# Kernel-mode hardware notes:
+# - There is no hostfs on hardware: application binaries must reach the
+#   target filesystem. Either the board defconfig bakes a ROMFS into the
+#   kernel image, or 'apps_image' generates one from <build>/bin and the
+#   'flash' command writes it with $APPS_IMG.
+# - When NTFC builds the image, command discovery uses <build>/bin. For
+#   prebuilt images (no 'defconfig'), commands are discovered once from
+#   the running target by listing CONFIG_PATH_INITIAL.
+# - Kernel boot (mount filesystem, load init ELF) plus a bootloader can
+#   exceed the 5 second default boot wait; raise 'boot_timeout'.
+
+config:
+  cwd: './external'
+  build_dir: './build'
+
+product:
+
+  name: "ntfc-<board>-knsh"
+  cores:
+    core0:
+      name: 'main'
+      device: 'serial'
+      exec_path: '/dev/ttyUSB0'
+      exec_args: '115200,n,8,1'
+      defconfig: 'boards/<arch>/<chip>/<board>/configs/knsh'
+      boot_timeout: 30
+      apps_image:
+        type: romfs
+      flash: '<flash-tool> write $IMAGE_BIN <kernel-address> $APPS_IMG <apps-address>'
+      reboot: '<reset-tool command>'
