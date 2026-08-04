@@ -77,6 +77,9 @@ product:                          # many products can be supported in tests (pro
       app_bindir: ''              # (optional) directory with kernel-mode application binaries.
                                   # Defaults to the bin/ directory next to the NuttX ELF
                                   # for kernel-mode builds.
+      apps_image:                 # (optional) generate a filesystem image with the application
+        type: romfs               # binaries after build (kernel-mode only, requires genromfs).
+                                  # The image path is available as $APPS_IMG in 'flash'.
 
                                   # NTFC can use pre-build image or build it from defconfig
                                   # the behavior will depend on the parameters specified in config.
