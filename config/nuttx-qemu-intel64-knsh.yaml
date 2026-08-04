@@ -1,0 +1,39 @@
+# NuttX kernel-mode (CONFIG_BUILD_KERNEL=y) target for QEMU intel64.
+#
+# The knsh_romfs configuration loads user-space applications from a
+# ROMFS image linked into the kernel; there is no hostfs, so exec_cwd
+# is not relevant for the mount. Application command discovery uses the
+# <build>/bin directory registered by the builder.
+#
+# Requires NuttX with CMake kernel-build support for x86_64 (branch
+# fix-x86_64-cmake-kernel-build in the vendored checkout: arch_interface
+# guard, CMAKE_LD, relocatable binary install, board ROMFS generation).
+
+config:
+  cwd: './external'
+  build_dir: './build'
+
+product:
+
+  name: "ntfc-intel64-knsh"
+  cores:
+    core0:
+      name: 'main'
+      device: 'qemu'
+      exec_path: 'qemu-system-x86_64'
+      exec_args: '-m 2G -cpu host -enable-kvm -nographic -serial mon:stdio'
+      defconfig: 'boards/x86_64/qemu/qemu-intel64/configs/knsh_romfs'
+      boot_timeout: 15
+      kv:
+        # resolve bare command names against the ROMFS mount point
+        CONFIG_LIBC_ENVPATH: "y"
+        CONFIG_PATH_INITIAL: "/system/bin"
+        # required by the arch/os ostest test case
+        CONFIG_SYSTEM_SETLOGMASK: "y"
+        # required by the arch/os heap stability test case
+        CONFIG_TESTING_HEAP: "y"
+        # setlocale()/nl_langinfo(), referenced by the LTP strftime cases
+        CONFIG_LIBC_LOCALE: "y"
+        # without it SIGKILL is absent from the default action table and
+        # can be ignored, which the LTP sigignore cases check for
+        CONFIG_SIG_SIGKILL_ACTION: "y"
