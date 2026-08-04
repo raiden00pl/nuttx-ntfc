@@ -61,6 +61,18 @@ class DeviceHost(DeviceCommon):
         """Return the spawned child PID, or ``None`` before start."""
         return self._child.pid if self._child else None
 
+    def _image_path(self) -> str:
+        """Return the image path, absolute when spawning in another cwd.
+
+        Relative paths are relative to the NTFC working directory, not
+        to the spawn directory.
+        """
+        elf = self._conf.elf_path
+        if not elf:
+            raise IOError
+
+        return os.path.abspath(elf) if self._cwd else str(elf)
+
     def _dev_is_health_priv(self) -> bool:
         """Check if the host device is OK."""
         if not self._child:
