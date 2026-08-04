@@ -85,12 +85,12 @@ class FilterTest:
                 reason = f"Required config '{d}' not enabled"
                 break
 
-        # command available in ELF
+        # command available on the target
         if skip is False:
             for c in cmd:
                 if self._config.cmd_check(c) is False:
                     skip = True
-                    reason = f"Required symbol '{c}' not found in ELF"
+                    reason = f"Required command '{c}' not available"
                     break
 
         # check extra parameters

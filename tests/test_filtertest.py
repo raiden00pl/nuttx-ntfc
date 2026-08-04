@@ -57,7 +57,7 @@ def test_filterest_filter():
         f.extract_test_requirements = mock_extract_test_requirements2
         skip, reason = f.check_test_support(None)
         assert skip is True
-        assert reason == "Required symbol 'CMD1' not found in ELF"
+        assert reason == "Required command 'CMD1' not available"
 
         config.kv_check.return_value = True
         config.cmd_check.return_value = True
