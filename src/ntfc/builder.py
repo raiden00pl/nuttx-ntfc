@@ -458,6 +458,23 @@ class NuttXBuilder:
             cores[core]["elf_path"] = nuttx_elf_path
             cores[core]["conf_path"] = nuttx_conf_path
 
+            if self._is_kernel_config(nuttx_conf_path):
+                # kernel-mode: applications are installed to <build>/bin
+                # and hostfs mounts resolve relative to the process cwd
+                cores[core].setdefault(
+                    "app_bindir", os.path.join(build_path, "bin")
+                )
+                cores[core].setdefault("exec_cwd", build_path)
+
+    @staticmethod
+    def _is_kernel_config(conf_path: str) -> bool:
+        """Check if a generated .config selects a kernel build."""
+        if not os.path.isfile(conf_path):
+            return False
+
+        with open(conf_path, "r", encoding="utf-8") as f:
+            return any(line.strip() == "CONFIG_BUILD_KERNEL=y" for line in f)
+
     def _reboot_core(
         self, core: str, cores: Dict[str, Any]
     ) -> None:  # pragma: no cover

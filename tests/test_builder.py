@@ -79,6 +79,70 @@ def test_builder_init():
     )
 
 
+def test_builder_kernel_mode_core_config(tmp_path) -> None:
+    config = copy.deepcopy(conf_dir)
+    config["config"]["build_dir"] = str(tmp_path)
+    config["product"]["cores"]["core0"]["defconfig"] = "dummy/path"
+
+    build_path = tmp_path / "product-xxx-dummy"
+    build_path.mkdir()
+    (build_path / ".config").write_text("CONFIG_BUILD_KERNEL=y\n")
+
+    b = NuttXBuilder(config)
+    b._run_command = builder_run_command_dummy
+    b._make_dir = builder_make_dir_dummy
+    b.build_all()
+
+    core = b.new_conf()["product"]["cores"]["core0"]
+    assert core["app_bindir"] == str(build_path / "bin")
+    assert core["exec_cwd"] == str(build_path)
+
+
+def test_builder_kernel_mode_keeps_user_overrides(tmp_path) -> None:
+    config = copy.deepcopy(conf_dir)
+    config["config"]["build_dir"] = str(tmp_path)
+    config["product"]["cores"]["core0"]["defconfig"] = "dummy/path"
+    config["product"]["cores"]["core0"]["app_bindir"] = "/custom/bin"
+    config["product"]["cores"]["core0"]["exec_cwd"] = "/custom/cwd"
+
+    build_path = tmp_path / "product-xxx-dummy"
+    build_path.mkdir()
+    (build_path / ".config").write_text("CONFIG_BUILD_KERNEL=y\n")
+
+    b = NuttXBuilder(config)
+    b._run_command = builder_run_command_dummy
+    b._make_dir = builder_make_dir_dummy
+    b.build_all()
+
+    core = b.new_conf()["product"]["cores"]["core0"]
+    assert core["app_bindir"] == "/custom/bin"
+    assert core["exec_cwd"] == "/custom/cwd"
+
+
+def test_builder_flat_mode_no_kernel_keys(tmp_path) -> None:
+    config = copy.deepcopy(conf_dir)
+    config["config"]["build_dir"] = str(tmp_path)
+    config["product"]["cores"]["core0"]["defconfig"] = "dummy/path"
+
+    build_path = tmp_path / "product-xxx-dummy"
+    build_path.mkdir()
+    (build_path / ".config").write_text("CONFIG_BUILD_FLAT=y\n")
+
+    b = NuttXBuilder(config)
+    b._run_command = builder_run_command_dummy
+    b._make_dir = builder_make_dir_dummy
+    b.build_all()
+
+    core = b.new_conf()["product"]["cores"]["core0"]
+    assert "app_bindir" not in core
+    assert "exec_cwd" not in core
+
+    # missing .config (dummy build) is treated as a flat build
+    assert (
+        NuttXBuilder._is_kernel_config(str(tmp_path / "nonexistent")) is False
+    )
+
+
 def test_builder_passes_build_env() -> None:
     config = copy.deepcopy(conf_dir)
     config["config"]["build_env"] = {"CC": "gcc-13", "CXX": "g++-13"}
