@@ -143,6 +143,99 @@ def test_builder_flat_mode_no_kernel_keys(tmp_path) -> None:
     )
 
 
+def test_builder_expand_flash_cmd() -> None:
+    b = NuttXBuilder(copy.deepcopy(conf_dir))
+    core_cfg = {
+        "elf_path": "bbb/core/nuttx",
+        "app_bindir": "bbb/core/bin",
+        "apps_img": "bbb/core/apps.romfs.img",
+    }
+
+    cmd = b._expand_flash_cmd(
+        "flash $IMAGE_BIN $IMAGE_HEX $APPS_BINDIR $APPS_IMG", core_cfg
+    )
+    assert cmd == (
+        "flash bbb/core/nuttx.bin bbb/core/nuttx.hex "
+        "bbb/core/bin bbb/core/apps.romfs.img"
+    )
+
+    # placeholders without registered values expand to empty strings
+    cmd = b._expand_flash_cmd(
+        "flash $APPS_BINDIR $APPS_IMG", {"elf_path": "bbb/core/nuttx"}
+    )
+    assert cmd == "flash  "
+
+
+def test_builder_apps_image(tmp_path, monkeypatch) -> None:
+    config = copy.deepcopy(conf_dir)
+    config["config"]["build_dir"] = str(tmp_path)
+    config["product"]["cores"]["core0"]["defconfig"] = "dummy/path"
+    config["product"]["cores"]["core0"]["apps_image"] = {"type": "romfs"}
+
+    build_path = tmp_path / "product-xxx-dummy"
+    build_path.mkdir()
+    (build_path / ".config").write_text("CONFIG_BUILD_KERNEL=y\n")
+
+    calls = []
+
+    def run_command_capture(cmd, env):
+        calls.append(cmd)
+
+    monkeypatch.setattr(
+        "ntfc.builder.shutil.which", lambda tool: f"/usr/bin/{tool}"
+    )
+
+    b = NuttXBuilder(config)
+    b._run_command = run_command_capture
+    b._make_dir = builder_make_dir_dummy
+    b.build_all()
+
+    core = b.new_conf()["product"]["cores"]["core0"]
+    img_path = str(build_path / "apps.romfs.img")
+    assert core["apps_img"] == img_path
+    assert calls[-1] == [
+        "/usr/bin/genromfs",
+        "-f",
+        img_path,
+        "-d",
+        str(build_path / "bin"),
+    ]
+
+
+def test_builder_apps_image_errors(tmp_path, monkeypatch) -> None:
+    def make_builder(config_txt, apps_image):
+        config = copy.deepcopy(conf_dir)
+        config["config"]["build_dir"] = str(tmp_path)
+        config["product"]["cores"]["core0"]["defconfig"] = "dummy/path"
+        config["product"]["cores"]["core0"]["apps_image"] = apps_image
+
+        build_path = tmp_path / "product-xxx-dummy"
+        build_path.mkdir(exist_ok=True)
+        (build_path / ".config").write_text(config_txt)
+
+        b = NuttXBuilder(config)
+        b._run_command = builder_run_command_dummy
+        b._make_dir = builder_make_dir_dummy
+        return b
+
+    # unsupported image type
+    with pytest.raises(BuilderConfigError):
+        make_builder("CONFIG_BUILD_KERNEL=y\n", {"type": "vfat"}).build_all()
+
+    # not a mapping
+    with pytest.raises(BuilderConfigError):
+        make_builder("CONFIG_BUILD_KERNEL=y\n", "romfs").build_all()
+
+    # no application directory (flat build)
+    with pytest.raises(BuilderConfigError):
+        make_builder("CONFIG_BUILD_FLAT=y\n", {"type": "romfs"}).build_all()
+
+    # genromfs not installed
+    monkeypatch.setattr("ntfc.builder.shutil.which", lambda tool: None)
+    with pytest.raises(BuilderConfigError):
+        make_builder("CONFIG_BUILD_KERNEL=y\n", {"type": "romfs"}).build_all()
+
+
 def test_builder_passes_build_env() -> None:
     config = copy.deepcopy(conf_dir)
     config["config"]["build_env"] = {"CC": "gcc-13", "CXX": "g++-13"}

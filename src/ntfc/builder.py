@@ -40,6 +40,9 @@ class NuttXBuilder:
     IMAGE_BIN_STR = "$IMAGE_BIN"
     IMAGE_HEX_STR = "$IMAGE_HEX"
     IMAGE_ELF_STR = "$IMAGE_ELF"
+    APPS_BINDIR_STR = "$APPS_BINDIR"
+    APPS_IMG_STR = "$APPS_IMG"
+    APPS_IMG_NAME = "apps.romfs.img"
     _KCONFIG_DISABLED_RE = re.compile(
         r"^#\s+(CONFIG_[A-Za-z0-9_]+)\s+is not set"
     )
@@ -466,6 +469,62 @@ class NuttXBuilder:
                 )
                 cores[core].setdefault("exec_cwd", build_path)
 
+            self._make_apps_image(cores[core], build_path)
+
+    def _make_apps_image(
+        self, core_cfg: Dict[str, Any], build_path: str
+    ) -> None:
+        """Generate a filesystem image with application binaries.
+
+        Enabled with the per-core ``apps_image`` option; the image path
+        is registered as ``apps_img`` for the ``$APPS_IMG`` flash
+        placeholder.
+        """
+        img_cfg = core_cfg.get("apps_image", None)
+        if not img_cfg:
+            return
+
+        if not isinstance(img_cfg, dict):
+            raise BuilderConfigError("apps_image must be a mapping")
+
+        img_type = img_cfg.get("type", "romfs")
+        if img_type != "romfs":
+            raise BuilderConfigError(
+                f"unsupported apps_image type: {img_type}"
+            )
+
+        bindir = core_cfg.get("app_bindir", None)
+        if not bindir:
+            raise BuilderConfigError(
+                "apps_image requires app_bindir (kernel-mode build)"
+            )
+
+        tool = shutil.which("genromfs")
+        if not tool:
+            raise BuilderConfigError("genromfs not found in PATH")
+
+        img_path = os.path.join(build_path, self.APPS_IMG_NAME)
+        self._run_command([tool, "-f", img_path, "-d", bindir], env=None)
+        core_cfg["apps_img"] = img_path
+
+    def _expand_flash_cmd(
+        self, flash_cmd: str, core_cfg: Dict[str, Any]
+    ) -> str:
+        """Expand image placeholders in a flash command."""
+        parent = Path(core_cfg["elf_path"]).parent
+        values = {
+            self.IMAGE_BIN_STR: str(parent / "nuttx.bin"),
+            self.IMAGE_HEX_STR: str(parent / "nuttx.hex"),
+            self.IMAGE_ELF_STR: core_cfg["elf_path"],
+            self.APPS_BINDIR_STR: core_cfg.get("app_bindir", ""),
+            self.APPS_IMG_STR: core_cfg.get("apps_img", ""),
+        }
+
+        for placeholder, value in values.items():
+            flash_cmd = flash_cmd.replace(placeholder, value)
+
+        return flash_cmd
+
     @staticmethod
     def _is_kernel_config(conf_path: str) -> bool:
         """Check if a generated .config selects a kernel build."""
@@ -491,13 +550,7 @@ class NuttXBuilder:
         """Flash single core image."""
         flash_cmd = cores[core].get("flash", None)
         if flash_cmd:
-            img_path = Path(cores[core]["elf_path"])
-            image_hex = str(img_path.parent) + "/nuttx.hex"
-            image_bin = str(img_path.parent) + "/nuttx.bin"
-
-            flash_cmd = flash_cmd.replace(self.IMAGE_BIN_STR, image_bin)
-            flash_cmd = flash_cmd.replace(self.IMAGE_HEX_STR, image_hex)
-            flash_cmd = flash_cmd.replace(self.IMAGE_ELF_STR, str(img_path))
+            flash_cmd = self._expand_flash_cmd(flash_cmd, cores[core])
 
             cmd = flash_cmd.split()
 
