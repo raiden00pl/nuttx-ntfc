@@ -35,9 +35,6 @@ if TYPE_CHECKING:
 class DeviceSim(DeviceHost):
     """This class implements host-based sim emulator."""
 
-    # sometimes sim misses a single trailing newline, so send two
-    NEWLINE_PAD = b"\n\n"
-
     def __init__(self, conf: "CoreConfig"):
         """Initialize sim emulator device."""
         DeviceHost.__init__(self, conf)
