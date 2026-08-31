@@ -65,24 +65,6 @@ def test_device_sim_start_opens_host():
         assert called["uptime"] == 3
 
 
-def test_device_sim_line_buffered_start_disables_send_delay():
-    with patch("ntfc.coreconfig.CoreConfig") as mockdevice:
-        config = mockdevice.return_value
-        config.elf_path = "/tmp/nuttx-sim"
-        config.line_buffered = True
-        config.uptime = 0
-        sim = DeviceSim(config)
-
-        class FakeChild:
-            delaybeforesend = 0.05
-
-        child = FakeChild()
-        sim.host_open = lambda *_args: child
-
-        sim.start()
-        assert child.delaybeforesend == 0
-
-
 def test_device_sim_write_adds_newline():
     with patch("ntfc.coreconfig.CoreConfig") as mockdevice:
         config = mockdevice.return_value

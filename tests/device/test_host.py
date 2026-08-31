@@ -48,6 +48,26 @@ class DeviceHost2(DeviceHost):
             self._child.send(b"\n\n")
 
 
+def test_device_host_line_buffered_survives_reopen(envconfig_dummy):
+    """A line-buffered device keeps its send delay off across a reopen."""
+
+    conf = envconfig_dummy.product[0].cfg_core(0)
+    conf._config["line_buffered"] = True
+
+    path = "./tests/resources/nuttx/sim/nuttx"
+    dev = DeviceHost2(conf)
+
+    child = dev.host_open([path])
+    assert child.delaybeforesend == 0
+
+    # a crash brings the device back through host_open() rather than through
+    # the device's own start, so the setting has to be made there
+    child = dev._dev_reopen()
+    assert child.delaybeforesend == 0
+
+    dev.stop()
+
+
 def test_device_host_open(envconfig_dummy, monkeypatch):
 
     conf = envconfig_dummy.product[0].cfg_core(0)

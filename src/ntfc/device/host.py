@@ -133,9 +133,18 @@ class DeviceHost(DeviceCommon):
         self._cmd = cmd
 
         logger.info(f"spawn cmd: {''.join(cmd)}")
-        self._child = pexpect.spawn(
+        child = pexpect.spawn(
             "".join(cmd), timeout=10, maxread=20000, cwd=self._cwd
         )
+
+        if self._conf.line_buffered:
+            # A line-buffered transport writes a whole command at once, so the
+            # per-send delay pexpect inserts between characters buys nothing.
+            # This is set here rather than by the caller so that it survives
+            # _dev_reopen(), which comes back through this function.
+            child.delaybeforesend = 0
+
+        self._child = child
 
         time.sleep(uptime)
 

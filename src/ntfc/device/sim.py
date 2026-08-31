@@ -49,9 +49,7 @@ class DeviceSim(DeviceHost):
         uptime = self._conf.uptime
 
         # open host-based emulation
-        child = self.host_open(cmd, uptime)
-        if self._conf.line_buffered:
-            child.delaybeforesend = 0
+        self.host_open(cmd, uptime)
 
     @property
     def name(self) -> str:
