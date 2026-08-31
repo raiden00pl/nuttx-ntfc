@@ -86,8 +86,7 @@ def test_device_sim_write_adds_newline():
         sim._child = FakeChild()
 
         sim._write(b"abc")
-        assert sent[:3] == [b"a", b"b", b"c"]
-        assert sent[-2:] == [b"\n", b"\n"]
+        assert sent == [b"a", b"b", b"c", b"\n"]
 
 
 def test_device_sim_write_no_extra_newline():
@@ -134,7 +133,7 @@ def test_device_sim_line_buffered_write():
         sim._child = FakeChild()
 
         sim._write(b"abc")
-        assert sent == [b"abc\n\n"]
+        assert sent == [b"abc\n"]
 
         sent.clear()
         sim._write(b"abc\n")
