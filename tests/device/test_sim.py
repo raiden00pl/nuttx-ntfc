@@ -119,6 +119,7 @@ def test_device_sim_line_buffered_write():
         config = mockdevice.return_value
         config.elf_path = "/tmp/nuttx-sim"
         config.line_buffered = True
+        config.os = "nuttx"
         sim = DeviceSim(config)
 
         sent = []
