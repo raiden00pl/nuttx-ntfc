@@ -25,7 +25,7 @@ import io
 import struct
 from typing import TYPE_CHECKING, Optional
 
-import lzf  # type: ignore[import-untyped]
+import lzf  # type: ignore
 
 from ntfc.debug.coredump.base import CoredumpHandler
 from ntfc.log.logger import logger

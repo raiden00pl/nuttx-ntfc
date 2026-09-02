@@ -34,7 +34,6 @@ dependencies = [
          "pexpect",
          "psutil",
          "pyserial",
-         "lzf",
          "pytest",
          "pytest-dependency",
          "pytest-html",
@@ -52,6 +51,11 @@ classifiers = [
 ]
 keywords = [
   "ntfc",
+]
+
+[project.optional-dependencies]
+coredump = [
+         "lzf",
 ]
 
 [project.scripts]

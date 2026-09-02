@@ -27,7 +27,6 @@ from ntfc.debug.coredump.fastboot_handler import FastbootHandler
 from ntfc.debug.coredump.gdb_handler import GdbHandler
 from ntfc.debug.coredump.local_file_handler import LocalFileHandler
 from ntfc.debug.coredump.manager import CoredumpManager
-from ntfc.debug.coredump.syslog_handler import SyslogHandler
 from ntfc.debug.coredump.ymodem_handler import YmodemHandler
 from ntfc.debug.gdb.controller import GdbController
 from ntfc.lib.fastboot.controller import FastbootController
@@ -230,6 +229,8 @@ def _register_coredump_handlers(
         mgr.register(LocalFileHandler(cfg.local_file))
 
     if cfg.syslog.enable:
+        from ntfc.debug.coredump.syslog_handler import SyslogHandler
+
         mgr.register(SyslogHandler(product.core(0).device))
 
 
