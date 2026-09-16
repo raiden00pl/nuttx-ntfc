@@ -1,0 +1,6 @@
+// nrf52840-dk for NuttX: the NuttX nRF52 serial driver uses the legacy
+// (non-EasyDMA) UART registers, while Renode defaults to UARTE.
+using "platforms/cpus/nrf52840.repl"
+
+uart0:
+    easyDMA: false

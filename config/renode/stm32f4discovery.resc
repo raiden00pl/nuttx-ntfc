@@ -1,0 +1,19 @@
+:name: stm32f4discovery
+:description: NuttX on the stm32f4discovery. Console on sysbus.usart2, connected to the NTFC terminal.
+
+using sysbus
+mach create "stm32f4discovery"
+machine LoadPlatformDescription @platforms/boards/stm32f4_discovery-kit.repl
+
+cpu PerformanceInMips 125
+
+$bin?=@nuttx
+
+macro reset
+"""
+    sysbus LoadELF $bin
+"""
+
+runMacro $reset
+
+connector Connect sysbus.usart2 ntfc

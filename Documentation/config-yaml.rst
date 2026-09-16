@@ -16,12 +16,12 @@ This file defines device-under-test (DUT) setup and global configuration.
      cores:                   # List of product cores
        core0:                 # Core0 entry
          name: 'core0-name'
-         device: 'sim|qemu|serial'
+         device: 'sim|qemu|renode|serial'
          # Device-specific configuration
 
        core1:                 # Core1 entry
          name: 'core1-name'
-         device: 'sim|qemu|serial'
+         device: 'sim|qemu|renode|serial'
          # Device-specific configuration
 
 
@@ -37,7 +37,7 @@ This file defines device-under-test (DUT) setup and global configuration.
      cores:
        core0:
          name: 'core-name'
-         device: 'sim|qemu|serial'
+         device: 'sim|qemu|renode|serial'
          # Device-specific configuration
 
    product1:
@@ -45,7 +45,7 @@ This file defines device-under-test (DUT) setup and global configuration.
      cores:
        core0:
          name: 'core-name'
-         device: 'sim|qemu|serial'
+         device: 'sim|qemu|renode|serial'
          # Device-specific configuration
 
 
@@ -227,6 +227,24 @@ Common QEMU executables: ``qemu-system-arm``, ``qemu-system-aarch64``,
 At default NTFC automatically add the ``-kernel path_to_elf_image`` option
 to ``exec_args``. You can also add your custom boot parameter with
 ``$IMAGE_ELF``, where ``$IMAGE_ELF`` will be replaced with the path to the ELF.
+
+Renode
+------
+
+This device type is implemented in :class:`ntfc.device.renode.DeviceRenode`.
+
+.. code-block:: yaml
+
+   cores:
+     core0:
+       name: 'main'
+       device: 'renode'
+       exec_path: 'renode'
+       exec_args: '-e "include @config/renode/board.resc"'
+
+NTFC sets ``$bin`` to the ELF and creates a socket terminal named ``ntfc``
+before ``exec_args`` runs. The script must load ``$bin`` and connect its
+console UART with ``connector Connect <uart> ntfc``. See ``config/renode/``.
 
 Serial Device
 -------------

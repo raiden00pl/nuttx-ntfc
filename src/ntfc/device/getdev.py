@@ -23,6 +23,7 @@
 from typing import TYPE_CHECKING, Callable, Dict
 
 from .qemu import DeviceQemu
+from .renode import DeviceRenode
 from .serial import DeviceSerial
 from .sim import DeviceSim
 
@@ -36,6 +37,7 @@ _DEVICE_FACTORIES: Dict[str, Callable[["CoreConfig"], "DeviceCommon"]] = {
     "sim": DeviceSim,
     "qemu": DeviceQemu,
     "serial": DeviceSerial,
+    "renode": DeviceRenode,
 }
 
 ###############################################################################

@@ -1,5 +1,9 @@
 # Change Log
 
+## Unreleased
+
+- Add Renode device support.
+
 ## 0.0.3
 
 - Add GDB and coredump debugging tools.

@@ -259,3 +259,33 @@ def test_device_host_exec_cwd_boot_timeout(tmp_path, monkeypatch):
 #   - test for timeout
 #   - test for very long output
 #   - test for
+
+
+def test_device_host_post_spawn_hook(envconfig_dummy, monkeypatch):
+    """host_open() calls _post_spawn() once the child exists, before the
+    boot wait, and again on every reopen."""
+
+    conf = envconfig_dummy.product[0].cfg_core(0)
+    path = "./tests/resources/nuttx/sim/nuttx"
+    dev = DeviceHost2(conf)
+
+    order = []
+
+    def post_spawn():
+        assert dev._child is not None
+        order.append("post_spawn")
+
+    def wait_for_boot(timeout):
+        order.append("boot")
+        return True
+
+    monkeypatch.setattr(dev, "_post_spawn", post_spawn)
+    monkeypatch.setattr(dev, "_wait_for_boot", wait_for_boot)
+
+    dev.host_open([path])
+    assert order == ["post_spawn", "boot"]
+
+    dev._dev_reopen()
+    assert order == ["post_spawn", "boot", "post_spawn", "boot"]
+
+    dev.stop()

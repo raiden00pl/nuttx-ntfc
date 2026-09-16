@@ -51,7 +51,7 @@ versions of Python.
 
 ## Features
 
-- NuttX simulator, QEMU and devices with serial port are supported
+- NuttX simulator, QEMU, Renode and devices with serial port are supported
 
 - Run the command from NSH and compare with the expected output
 
