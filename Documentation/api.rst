@@ -36,6 +36,7 @@ Device Interface
    ntfc.device.host
    ntfc.device.nuttx
    ntfc.device.qemu
+   ntfc.device.renode
    ntfc.device.serial
    ntfc.device.sim
 

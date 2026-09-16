@@ -1,0 +1,16 @@
+config:
+  cwd: './external'
+  build_dir: './build'
+
+product:
+
+  name: "ntfc-renode-stm32f746g-disco"
+  cores:
+    core0:
+      name: 'main'
+      device: 'renode'
+      exec_path: 'renode'
+      exec_args: '-e "include @config/renode/stm32f746g-disco.resc"'
+      defconfig: 'boards/arm/stm32f7/stm32f746g-disco/configs/ntfc'
+      boot_timeout: 30
+      flash: ''

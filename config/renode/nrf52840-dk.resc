@@ -1,0 +1,17 @@
+:name: nrf52840-dk
+:description: NuttX on the nrf52840-dk. Console on sysbus.uart0, connected to the NTFC terminal.
+
+using sysbus
+mach create "nrf52840-dk"
+machine LoadPlatformDescription $ORIGIN/nrf52840-dk.repl
+
+$bin?=@nuttx
+
+macro reset
+"""
+    sysbus LoadELF $bin
+"""
+
+runMacro $reset
+
+connector Connect sysbus.uart0 ntfc

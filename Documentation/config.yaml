@@ -63,14 +63,18 @@ product:                          # many products can be supported in tests (pro
   cores:                          # Cores configuration
     core0:                        # Main core (core 0)
       name: ''                    # Core name
-      device: ''                  # Choose a device: sim, qemu
+      device: ''                  # Choose a device: sim, qemu, renode, serial
       exec_path: ''               # Path of emulator execution for QEMU targets eg: `qemu-system-x86_64`
+                                  # Renode launcher for renode targets, eg: `renode`
                                   # Path of serial port for serial targets, eg: `/dev/ttyACM0`
                                   # Empty for simulator.
       exec_args: ''               # Args for emulator execution for QEMU tragets.
+                                  # Renode args for renode targets, eg '-e "include @board.resc"'.
+                                  # The script loads $bin and connects the console UART to
+                                  # the `ntfc` terminal, see config/renode/.
                                   # Serial port configuration for serial targets, eg '9600,n,8,1'
                                   # Empty for simulator.
-      exec_cwd: ''                # (optional) working directory for the spawned sim/qemu process.
+      exec_cwd: ''                # (optional) working directory for the spawned sim/qemu/renode process.
                                   # Kernel-mode hostfs mounts resolve relative to this directory.
                                   # Defaults to the core build directory for kernel-mode builds.
       boot_timeout: 5             # (optional) seconds to wait for the first shell prompt. Defaults to 5

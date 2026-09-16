@@ -20,7 +20,7 @@ and connects to it one of two ways:
 * **Remote target** (``debug.gdb.target``) - for QEMU or real hardware
   with a debug probe. Set it to the ``host:port`` (or Unix socket path)
   of a GDB stub. For QEMU, add ``-s`` to ``exec_args`` to get a stub on
-  ``localhost:1234``.
+  ``localhost:1234``. For Renode, add ``-e "machine StartGdbServer 3333"``.
 
 * **Simulator PID-attach** (``debug.gdb.attach: true``) - for the
   host-based NuttX simulator, where there's no remote stub, just a

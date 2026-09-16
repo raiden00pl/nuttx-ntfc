@@ -1,0 +1,18 @@
+config:
+  cwd: './external'
+  build_dir: './build'
+
+product:
+
+  name: "ntfc-renode-nucleo-h743zi"
+  cores:
+    core0:
+      name: 'main'
+      device: 'renode'
+      exec_path: 'renode'
+      exec_args: '-e "include @config/renode/nucleo-h743zi.resc"'
+      defconfig: 'boards/arm/stm32h7/nucleo-h743zi/configs/ntfc'
+      boot_timeout: 30
+      flash: ''
+      kv:
+        CONFIG_STM32_PWR_IGNORE_ACTVOSRDY: "y"

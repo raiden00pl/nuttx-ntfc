@@ -1,0 +1,17 @@
+# No CCM in Renode: single 112 KiB heap.
+config:
+  cwd: './external'
+  build_dir: './build'
+
+product:
+
+  name: "ntfc-renode-stm32f4discovery"
+  cores:
+    core0:
+      name: 'main'
+      device: 'renode'
+      exec_path: 'renode'
+      exec_args: '-e "include @config/renode/stm32f4discovery.resc"'
+      defconfig: 'boards/arm/stm32f4/stm32f4discovery/configs/ntfc'
+      boot_timeout: 30
+      flash: ''

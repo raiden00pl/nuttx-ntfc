@@ -181,11 +181,20 @@ class DeviceHost(DeviceCommon):
 
         time.sleep(uptime)
 
+        self._post_spawn()
+
         ret = self._wait_for_boot(self._conf.boot_timeout)
         if ret is False:  # pragma: no cover
             raise TimeoutError("device boot timeout")
 
         return self._child
+
+    def _post_spawn(self) -> None:
+        """Run after the child is spawned and before the boot wait.
+
+        Transports that do not talk to the child's pty (e.g. a socket
+        opened by the emulator) attach here. Runs on every reopen.
+        """
 
     def _stop_impl(self) -> None:
         """Stop host device and kill the underlying process."""

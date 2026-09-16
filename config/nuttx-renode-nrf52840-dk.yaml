@@ -1,0 +1,16 @@
+config:
+  cwd: './external'
+  build_dir: './build'
+
+product:
+
+  name: "ntfc-renode-nrf52840-dk"
+  cores:
+    core0:
+      name: 'main'
+      device: 'renode'
+      exec_path: 'renode'
+      exec_args: '-e "include @config/renode/nrf52840-dk.resc"'
+      defconfig: 'boards/arm/nrf52/nrf52840-dk/configs/ntfc'
+      boot_timeout: 30
+      flash: ''
